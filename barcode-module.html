@@ -1,0 +1,115 @@
+<script src="//d3js.org/d3.v5.min.js"></script>
+
+<style>
+    #chart-container-grid {
+        font-family: "adelle-sans", "lft-etica", "t26-carbon", monospace;
+        font-size: 12px;
+        letter-spacing: 0.03rem;
+        -webkit-font-feature-settings: "c2sc", "smcp";
+        font-feature-settings: "c2sc", "smcp";
+        color: #919995;
+        text-transform: uppercase}
+    .x-axis path {stroke: #f3f4f2}
+    .x-axis text {fill: #262b28; stroke: #f3f4f2; stroke-width: 1px; font-size: 55px;
+        opacity: .9;}
+    .y-axis path {stroke: #f3f4f2;}
+
+
+    .viz-caption {
+        font-family: "adelle-sans", sans-serif;
+        color: #262b28;
+        margin-top: 10px;
+    }
+</style>
+
+    <div id="chart-container-grid"></div>
+
+</aside>
+
+<script>
+
+    let parseTime = d3.timeParse("%Y%m");
+
+    let formatTime = d3.timeFormat("%Y");
+
+    let margin = {top: 0, right: 0, bottom: 0, left: 0},
+        width = 1200 - margin.right - margin.left,
+        height = 400 - margin.top - margin.bottom;
+
+    let x = d3.scaleBand()
+        .range([0, width])
+        .padding(0);
+
+    let y = d3.scaleLinear().range([height, 0]);
+
+    let region = [
+        {name: "South Carolina", data: "south_carolina.csv"},
+        {name: "Charleston", data:"charleston.csv"},
+        {name:"Greenville", data:"greenville.csv"},
+        {name:"Columbia", data:"columbia.csv"}
+    ];
+
+    let selected_region = region[1];
+
+    d3.csv("https://data.postandcourier.com/assets/hurricane_wire/temperatures/" + selected_region.data).then(function(data) {
+
+        data.forEach(function(d) {
+            d.Anomaly = +d.Anomaly;
+            d.Date = parseTime(d.Date);
+            d.Value = +d.Value;
+        });
+
+        function generateChart() {
+
+            x.domain(data.map(function(d) { return d.Date; }));
+            y.domain([0, d3.max(data, function(d) { return d.Anomaly; })]);
+
+            let xAxis = d3.axisTop(x)
+                .tickSize(0)
+                .tickFormat(function(d, i) {
+                    if (i === 0 || i === data.length - 1) {
+                        return formatTime(d)
+                    }});
+
+            let extent = d3.extent(data, d => d.Anomaly);
+
+            let scaleTest = d3.scaleLinear()
+                .domain([extent[0], 0, extent[1]])
+                .range(["#1d8acb", "#f3f4f2", "#f15062"]);
+
+            d3.select("#chart-container-grid")
+                .append("div")
+                .attr("id", "temp_grid")
+                .style("background-color", "#f3f4f2")
+
+            let gridunit_svg = d3.select("#temp_grid")
+                .append("svg")
+                .attr("viewBox", '0 0 1200 400');
+
+            gridunit_svg.selectAll("bar")
+                .data(data)
+                .enter().append("rect")
+                .attr("id", function(d) {return d.date})
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+                .style("fill", function(d) {return scaleTest(d.Anomaly)})
+                .attr("x", function(d)  {return x(d.Date)})
+                .attr("width", x.bandwidth())
+                .attr("height", height);
+
+            gridunit_svg.append("g")
+                .attr("class", "x-axis")
+                .attr("transform", "translate(" + margin.left +  "," + (height + margin.top + 2) + ")")
+                .call(xAxis)
+                .selectAll("text")
+                .style("text-anchor", function(d, i) {
+                    if (i === 0) {return "start"}
+                    else return "end"
+                });
+
+        }
+
+
+        generateChart();
+
+    })
+</script>
